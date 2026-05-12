@@ -58,6 +58,45 @@ def _find_file(folder: Path, names: list[str]) -> Path:
     raise FileNotFoundError(f"Bestand niet gevonden in {folder}: {', '.join(names)}")
 
 
+def read_voltage_times_from_mode(voltage_file: Path) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """Extract start and end times from voltage file based on MODE transitions (BAT to OFF)."""
+    df = pd.read_csv(voltage_file)
+    df.columns = [col.strip() for col in df.columns]
+
+    if "MODE" not in df.columns:
+        raise ValueError("Elektriciteitsmeting bevat geen MODE-kolom.")
+
+    if "TIME" in df.columns:
+        time_col = "TIME"
+    elif "time" in df.columns:
+        time_col = "time"
+    else:
+        raise ValueError("Elektriciteitsmeting bevat geen TIME-kolom.")
+
+    df[time_col] = pd.to_datetime(df[time_col], errors="coerce")
+    df = df.dropna(subset=[time_col, "MODE"]).sort_values(time_col)
+    df["MODE_clean"] = df["MODE"].astype(str).str.strip().str.upper()
+
+    if df.empty:
+        raise ValueError("Geen geldige gegevens in elektriciteitsmeting.")
+
+    # Find first BAT entry (start)
+    bat_rows = df[df["MODE_clean"] == "BAT"]
+    if bat_rows.empty:
+        raise ValueError("Geen MODE='BAT' gevonden in elektriciteitsmeting. Kan starttijd niet bepalen.")
+
+    start_time = bat_rows.iloc[0][time_col]
+
+    # Find first OFF after BAT (end)
+    off_rows = df[(df["MODE_clean"] == "OFF") & (df[time_col] >= start_time)]
+    if off_rows.empty:
+        raise ValueError("Geen MODE='OFF' gevonden na MODE='BAT'. Kan eindtijd niet bepalen.")
+
+    end_time = off_rows.iloc[0][time_col]
+
+    return start_time, end_time
+
+
 def read_test_times(test_conditions_file: Path) -> tuple[pd.Timestamp, pd.Timestamp, dict[str, str]]:
     df = pd.read_csv(test_conditions_file)
     df.columns = [col.strip() for col in df.columns]
@@ -93,30 +132,38 @@ def read_test_times(test_conditions_file: Path) -> tuple[pd.Timestamp, pd.Timest
     return sensor_start, sensor_end, labels
 
 
-def read_voltage_start(voltage_file: Path) -> pd.Timestamp:
-    df = pd.read_csv(voltage_file)
-    df.columns = [col.strip() for col in df.columns]
+def read_test_times_or_fallback(test_conditions_file: Path, voltage_file: Path) -> tuple[pd.Timestamp, pd.Timestamp, dict[str, str]]:
+    """Try to read test times from testcondities.csv with 'gestart'/'gestopt' markers.
+    If not found, fall back to determining times from voltage file MODE transitions."""
+    try:
+        # Try primary method: read from testcondities markers
+        return read_test_times(test_conditions_file)
+    except (ValueError, KeyError) as e:
+        try:
+            # Fallback: use voltage MODE BAT transitions
+            start_time, end_time = read_voltage_times_from_mode(voltage_file)
+            labels = DEFAULT_SENSOR_LABELS.copy()
+            # Try to extract sensor labels from testcondities if available
+            try:
+                df = pd.read_csv(test_conditions_file)
+                df.columns = [col.strip() for col in df.columns]
+                if len(df) > 0:
+                    for i in range(1, 5):
+                        col = f"locsensor{i}"
+                        if col in df.columns:
+                            value = str(df.iloc[0].get(col, "")).strip()
+                            if value and value.lower() != "nan":
+                                labels[f"sensor{i}"] = value
+            except:
+                pass
+            return start_time, end_time, labels
+        except Exception as fallback_error:
+            raise ValueError(
+                f"Kan testcondities niet bepalen.\n"
+                f"Primaire methode (testcondities.csv met 'gestart'/'gestopt'): {str(e)}\n"
+                f"Fallback methode (MODE BAT→OFF in spanning): {str(fallback_error)}"
+            )
 
-    if "MODE" not in df.columns:
-        raise ValueError("Elektriciteitsmeting bevat geen MODE-kolom.")
-
-    if "TIME" in df.columns:
-        time_col = "TIME"
-    elif "time" in df.columns:
-        time_col = "time"
-    else:
-        raise ValueError("Elektriciteitsmeting bevat geen TIME-kolom.")
-
-    batt_rows = df[df["MODE"].astype(str).str.strip().str.upper() == "BATT"].copy()
-    if batt_rows.empty:
-        raise ValueError("Geen MODE = BATT gevonden in elektriciteitsmeting.")
-
-    batt_rows[time_col] = pd.to_datetime(batt_rows[time_col], errors="coerce")
-    batt_rows = batt_rows.dropna(subset=[time_col]).sort_values(time_col)
-    if batt_rows.empty:
-        raise ValueError("Geen geldige TIME gevonden bij MODE = BATT.")
-
-    return batt_rows.iloc[0][time_col]
 
 
 def load_voltage_data(csv_path: Path) -> pd.DataFrame:
@@ -371,10 +418,12 @@ def make_graph_from_files(temperature_folder: Path, voltage_file: Path, output_b
     sensor_file = _find_file(temperature_folder, ["metingen.csv"])
     test_conditions_file = _find_file(temperature_folder, ["testcondities.csv"])
 
-    sensor_start, sensor_end, sensor_labels = read_test_times(test_conditions_file)
-    voltage_start = read_voltage_start(voltage_file)
-    test_duration = sensor_end - sensor_start
-    voltage_end = voltage_start + test_duration
+    # Use flexible time detection: try testcondities markers first, then fallback to voltage MODE
+    sensor_start, sensor_end, sensor_labels = read_test_times_or_fallback(test_conditions_file, voltage_file)
+    
+    # Times are now synchronized - use same timestamps for both measurements
+    voltage_start = sensor_start
+    voltage_end = sensor_end
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     output_folder = output_base_dir / f"accu_meting_{timestamp}"

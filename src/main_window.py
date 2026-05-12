@@ -376,57 +376,9 @@ class MainWindow(QWidget):
         env_grid.addWidget(self.btn_log_env_temp, 0, 3)
         env_left.addLayout(env_grid)
 
-        env_separator = QFrame()
-        env_separator.setObjectName("connectionDivider")
-        env_separator.setFixedWidth(1)
-
-        sync_container = QVBoxLayout()
-        sync_container.setContentsMargins(0, 0, 0, 0)
-        sync_container.setSpacing(0)
-
-        self.btn_sync_test = QPushButton()
-        self.btn_sync_test.setObjectName("syncButton")
-        self.btn_sync_test.setProperty("state", "start")
-        self.btn_sync_test.setMinimumSize(210, 78)
-        self.btn_sync_test.setEnabled(False)
-
-        sync_button_layout = QHBoxLayout(self.btn_sync_test)
-        sync_button_layout.setContentsMargins(18, 10, 18, 10)
-        sync_button_layout.setSpacing(10)
-
-        self.play_icon = QLabel()
-        self.play_icon.setObjectName("syncButtonIcon")
-        self.play_icon.setPixmap(pixmap_from_colored_svg(PLAY_ICON_SVG, "#ffffff", 22))
-        self.play_icon.setFixedSize(26, 26)
-        self.play_icon.setAlignment(Qt.AlignCenter)
-        self.play_icon.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-
-        sync_text_box = QVBoxLayout()
-        sync_text_box.setSpacing(2)
-
-        self.sync_button_title = QLabel("Test gestart")
-        self.sync_button_title.setObjectName("syncButtonTitle")
-        self.sync_button_title.setAlignment(Qt.AlignLeft)
-        self.sync_button_title.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-
-        self.lbl_sync = QLabel("Klik direct na starten load")
-        self.lbl_sync.setObjectName("syncButtonSubtitle")
-        self.lbl_sync.setAlignment(Qt.AlignLeft)
-        self.lbl_sync.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-
-        sync_text_box.addWidget(self.sync_button_title)
-        sync_text_box.addWidget(self.lbl_sync)
-
-        sync_button_layout.addWidget(self.play_icon)
-        sync_button_layout.addLayout(sync_text_box, 1)
-
-        sync_container.addStretch(1)
-        sync_container.addWidget(self.btn_sync_test)
-        sync_container.addStretch(1)
-
-        env_outer.addLayout(env_left, 2)
-        env_outer.addWidget(env_separator)
-        env_outer.addLayout(sync_container, 2)
+        env_outer.addStretch(1)
+        env_outer.addLayout(env_left, 0)
+        env_outer.addStretch(1)
 
         self.log_card = QFrame()
         self.log_card.setObjectName("card")
@@ -472,7 +424,6 @@ class MainWindow(QWidget):
         self.btn_browse.clicked.connect(self.choose_log_path)
         self.btn_toggle_log.clicked.connect(self.toggle_logging)
         self.btn_log_env_temp.clicked.connect(self.log_environment_temperature)
-        self.btn_sync_test.clicked.connect(self.toggle_test_status)
         self.btn_graph_browse.clicked.connect(self.choose_graph_output_path)
         self.btn_make_graph.clicked.connect(self.make_graph)
 
@@ -637,7 +588,6 @@ class MainWindow(QWidget):
         self.btn_toggle_log.setEnabled(can_start or can_stop)
         has_log_dir = bool(self.log_base_dir)
         self.btn_log_env_temp.setEnabled(has_log_dir)
-        self.btn_sync_test.setEnabled(self.logging_enabled)
         
     def refresh_port_list(self, selected_port: str = ""):
         ports = list_serial_ports()
@@ -757,25 +707,7 @@ class MainWindow(QWidget):
             self.status.setText(f"Schrijffout testcondities: {e}")
             return False
 
-    def toggle_test_status(self):
-        if self.test_status != "gestart":
-            self.test_status = "gestart"
-            self.sync_button_title.setText("Gestopt")
-            self.lbl_sync.setText("Klik direct na stoppen load")
-            self.btn_sync_test.setProperty("state", "stop")
-            status_text = "Test gestart gelogd voor tijdsynchronisatie"
-        else:
-            self.test_status = "gestopt"
-            self.sync_button_title.setText("Test gestart")
-            self.lbl_sync.setText("Klik direct na starten load")
-            self.btn_sync_test.setProperty("state", "start")
-            status_text = "Test gestopt gelogd"
 
-        self.btn_sync_test.style().unpolish(self.btn_sync_test)
-        self.btn_sync_test.style().polish(self.btn_sync_test)
-
-        if self._write_test_condition_row():
-            self.status.setText(status_text)
 
     def _close_serial(self):
         if self.ser:
