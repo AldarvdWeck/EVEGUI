@@ -1,0 +1,4 @@
+timestamp,omgevingstemp,status,locsensor1,locsensor2,locsensor3,locsensor4
+2026/04/29 09:16:30,18.00,uit,bovenop,smalle zijkant,onderop,brede zijkant
+2026/04/29 09:16:40,,gestart,bovenop,smalle zijkant,onderop,brede zijkant
+2026/04/29 10:11:41,,gestopt,bovenop,smalle zijkant,onderop,brede zijkant
