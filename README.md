@@ -10,6 +10,38 @@ AccuTester is een desktopapplicatie voor het monitoren van temperatuurmetingen v
 - Vastleggen van testcondities en omgevingstemperatuur in `testcondities.csv`
 - Genereren van gecombineerde grafieken op basis van temperatuur- en elektriciteitsdata
 
+## Projectstructuur
+
+```
+EVEGUI/
+├── src/                              # Broncode
+│   ├── __init__.py
+│   ├── main.py                       # Hoofdprogramma (ingang)
+│   ├── main_window.py                # Hoofd UI-logica
+│   ├── utils.py                      # Hulpprogramma's
+│   ├── config.py                     # Configuratiegegevens
+│   ├── style.py                      # UI-styling
+│   ├── icons.py                      # SVG-icoontjes
+│   ├── graph_maker.py                # Grafiekgeneratie
+│   └── widgets/                      # Aangepaste UI-widgets
+│       ├── __init__.py
+│       ├── arrow_combo_box.py
+│       ├── browse_button.py
+│       ├── file_drop_button.py
+│       └── sensor_plot.py
+├── assets/                           # Afbeeldingen, icoontjes
+│   └── Logo.ico
+├── data/                             # Testgegevens
+│   └── test_data/
+├── tests/                            # Unit-tests
+├── docs/                             # Documentatie
+├── .gitignore
+├── README.md
+├── requirements.txt
+├── run.py                            # Entry point
+└── AccuTester.spec                   # PyInstaller configuratie
+```
+
 ## Installatie
 
 1. Zorg dat Python 3.11 of hoger geïnstalleerd is.
@@ -26,6 +58,11 @@ Windows:
 venv\Scripts\Activate.ps1
 ```
 
+Linux/macOS:
+```bash
+source venv/bin/activate
+```
+
 4. Installeer de dependencies:
 
 ```bash
@@ -37,26 +74,33 @@ pip install -r requirements.txt
 Start de applicatie met:
 
 ```bash
+python run.py
+```
+
+Ofin de src-map:
+```bash
+cd src
 python main.py
 ```
 
 ## GitHub / versiebeheer
 
-Deze map is nu voorbereid als git-repository. Volg deze stappen om een GitHub-opslagplaats te koppelen:
-
-1. Maak een nieuwe repository aan op GitHub.
-2. Voeg de remote toe op jouw machine:
+Deze repository is voorbereid voor GitHub:
 
 ```bash
 git remote add origin https://github.com/<gebruikersnaam>/<repositorynaam>.git
+git push -u origin master
 ```
 
-3. Stuur de eerste commit naar GitHub:
+## Dependencies
 
-```bash
-git push -u origin main
-```
+- `PySide6` - Qt bindings voor Python
+- `pyqtgraph` - Real-time grafiekweergave
+- `pyserial` - Seriële communicatie met Arduino
+- `pandas` - Data-verwerking
+- `matplotlib` - Grafieken
 
-## Bestanden om te negeren
+## Licentie
 
-`README.md` en `.gitignore` zijn toegevoegd, zodat tijdelijke bestanden, virtuele omgevingen en build-artifacts niet naar GitHub worden gestuurd.
+[Voeg licentie toe]
+
